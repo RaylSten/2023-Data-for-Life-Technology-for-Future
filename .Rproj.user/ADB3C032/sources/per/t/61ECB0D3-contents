@@ -1,0 +1,612 @@
+setwd("C:/Users/user/Desktop/政大/競賽/內政部/shiny/Shiny/data")
+library(sf)
+library(gridExtra)
+library(ggplot2)
+library(RColorBrewer)
+library(maps)
+library(mapproj)
+library(ggmap)
+library(lubridate)
+library(tidyverse)
+
+taiwan.town.map <- st_read("TOWN_MOI_1120317.shp")
+head(taiwan.town.map)
+taipei.map <- taiwan.town.map[taiwan.town.map$COUNTYNAME == "臺北市",]
+
+taipei.map
+###############################################################################
+
+g1 <- ggplot(data = taipei.map) + geom_sf() + labs(title = "台北市行政區圖")
+g2 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Accent"))(22)) +
+  labs(title = "台北市行政區圖")
+
+g3 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME), show.legend = F) +
+  geom_sf_text(aes(label = TOWNNAME), size = 3) +
+  labs(title = "台北市行政區圖")
+grid.arrange(g1, g2, g3, nrow = 1, ncol = 3)
+
+g3
+
+ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME), show.legend = F) +
+  geom_sf_text(aes(label = TOWNNAME), size = 3) +
+  labs(title = "台北市行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", data = traffic, alpha = 1)
+
+###############################################################
+# Traffic Accident
+traffic <- read.csv("traffic_accident.csv", as.is = T, 
+                    fileEncoding = "BIG5")
+head(traffic)
+
+nrow(traffic)
+
+datetime <- strptime(traffic$發生時間, "%Y/%m/%d %H:%M")
+
+hour <- format(datetime, "%H")
+
+hour <- as.numeric(hour)
+
+traffic['hour'] <- hour
+
+head(traffic)
+
+# MRT
+MRT <- read.csv("MRT.csv", as.is = T, 
+                fileEncoding = "BIG5")
+head(MRT)
+colnames(MRT) <- c('a', 'b', 'd', 'X', 'Y', 'Z')
+
+g1 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Accent"))(22)) +
+  labs(title = "台北市行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", data = traffic[(traffic$hour >= 6) & (traffic$hour <= 10),], alpha = 1) + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = "blue", data = MRT, alpha = 1)
+
+g2 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Accent"))(22)) +
+  labs(title = "台北市行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", data = traffic[(traffic$hour >= 16) & (traffic$hour <= 20),], alpha = 1) + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = "blue", data = MRT, alpha = 1)
+
+g3 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Accent"))(22)) +
+  labs(title = "台北市行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", 
+             data = traffic[(traffic$hour > 10) & (traffic$hour < 16),], alpha = 1) + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = "blue", data = MRT, alpha = 1)
+
+g4 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Accent"))(22)) +
+  labs(title = "台北市行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", 
+             data = traffic[(traffic$hour > 20) | (traffic$hour >= 0) & (traffic$hour < 6),], alpha = 1) + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = "blue", data = MRT, alpha = 1)
+
+g4
+grid.arrange(g1, g2, nrow = 1, ncol = 2)
+
+grid.arrange(g3, g4, nrow = 1, ncol = 2)
+
+
+grid.arrange(g1, g2, g3, g4, nrow = 2, ncol = 2)
+
+# speed
+speed <- read.csv("speed.csv", as.is = T, 
+                    fileEncoding = "BIG5")
+head(speed)
+summary(speed)
+
+###############################################################
+# road
+
+road <- read.csv("road.csv")
+road[road$AvgSpd >= 65, '是否超速'] <- 1
+road[road$AvgSpd < 65, '是否超速'] <- 0
+road$是否超速 <- factor(road$是否超速, levels = c(1, 0), labels = c("是", "否"))
+
+head(road)
+road
+str(road)
+
+ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Accent"))(22)) +
+  labs(title = "台北市行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", data = traffic, alpha = 1) + 
+  geom_segment(data = road, 
+               aes(x = 121.5015, y = 25.11950, 
+                   xend = 121.5033, yend = 25.11781), 
+               color = 'blue', size = 3)
+
+##############################################################
+# 台北市各行政區
+
+Songshan.map <- taipei.map[taipei.map$TOWNNAME == "松山區",]
+Xinyi.map <- taipei.map[taipei.map$TOWNNAME == "信義區",]
+Daan.map <- taipei.map[taipei.map$TOWNNAME == "大安區",]
+Zhongshan.map <- taipei.map[taipei.map$TOWNNAME == "中山區",]
+Zhongzheng.map <- taipei.map[taipei.map$TOWNNAME == "中正區",]
+Datong.map <- taipei.map[taipei.map$TOWNNAME == "大同區",]
+Wanhua.map <- taipei.map[taipei.map$TOWNNAME == "萬華區",]
+Wenshan.map <- taipei.map[taipei.map$TOWNNAME == "文山區",]
+Nangang.map <- taipei.map[taipei.map$TOWNNAME == "南港區",]
+Neihu.map <- taipei.map[taipei.map$TOWNNAME == "內湖區",]
+Shilin.map <- taipei.map[taipei.map$TOWNNAME == "士林區",]
+Beitou.map <- taipei.map[taipei.map$TOWNNAME == "北投區",]
+
+# 交通事故(台北市各行政區)
+Songshan.traf <- traffic[grep("松山區", traffic$肇事地點), ]
+
+Xinyi.traf <- traffic[grep("信義區", traffic$肇事地點), ]
+Daan.traf <- traffic[grep("大安區", traffic$肇事地點), ]
+Zhongshan.traf <- traffic[grep("中山區", traffic$肇事地點), ]
+Zhongzheng.traf <- traffic[grep("中正區", traffic$肇事地點), ]
+Datong.traf <- traffic[grep("大同區", traffic$肇事地點), ]
+Wanhua.traf <- traffic[grep("萬華區", traffic$肇事地點), ]
+Wenshan.traf <- traffic[grep("文山區", traffic$肇事地點), ]
+Nangang.traf <- traffic[grep("南港區", traffic$肇事地點), ]
+Neihu.traf <- traffic[grep("內湖區", traffic$肇事地點), ]
+Shilin.traf <- traffic[grep("士林區", traffic$肇事地點), ]
+Beitou.traf <- traffic[grep("北投區", traffic$肇事地點), ]
+
+# 路段速度(台北市各行政區)
+Songshan.road1 <- road[road$dis1 == '松山', ]
+Songshan.road1
+Songshan.road2 <- road[road$dis2 == '松山', ]
+Songshan.road2
+Songshan.road1 <- Songshan.road1 %>% filter(StartWgsX > 121.54)
+Songshan.road2 <- Songshan.road2 %>% filter(StartWgsX > 121.54)
+
+Xinyi.road1 <- road[road$dis1 == '信義', ]
+Xinyi.road2 <- road[road$dis2 == '信義', ]
+
+Daan.road1 <- road[road$dis1 == '大安', ]
+Daan.road2 <- road[road$dis2 == '大安', ]
+
+Zhongshan.road1 <- road[road$dis1 == '中山', ]
+Zhongshan.road2 <- road[road$dis2 == '中山', ]
+
+Zhongzheng.road1 <- road[road$dis1 == '中正', ]
+Zhongzheng.road2 <- road[road$dis2 == '中正', ]
+
+Datong.road1 <- road[road$dis1 == '大同', ]
+Datong.road2 <- road[road$dis2 == '大同', ]
+
+Wanhua.road1 <- road[road$dis1 == '萬華', ]
+Wanhua.road2 <- road[road$dis2 == '萬華', ]
+
+Wenshan.road1 <- road[road$dis1 == '文山', ]
+Wenshan.road2 <- road[road$dis2 == '文山', ]
+
+Nangang.road1 <- road[road$dis1 == '南港', ]
+Nangang.road2 <- road[road$dis2 == '南港', ]
+
+Neihu.road1 <- road[road$dis1 == '內湖', ]
+Neihu.road2 <- road[road$dis2 == '內湖', ]
+
+Shilin.road1 <- road[road$dis1 == '士林', ]
+Shilin.road2 <- road[road$dis2 == '士林', ]
+
+Beitou.road1 <- road[road$dis1 == '北投', ]
+Beitou.road2 <- road[road$dis2 == '北投', ]
+
+windowsFonts(A = windowsFont('微軟正黑體'))
+
+# 台北市各行政區地圖
+p1 <- ggplot(data = Songshan.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "松山區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Songshan.traf, alpha = 1) +
+  geom_segment(data = Songshan.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Songshan.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c('red', "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 24, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+p2 <- ggplot(data = Xinyi.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "信義區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Xinyi.traf, alpha = 1) +
+  geom_segment(data = Xinyi.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Xinyi.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Daan.road1 <- Daan.road1[-9,]
+Daan.traf <- Daan.traf %>% filter(X > 121.52)
+
+p3 <- ggplot(data = Daan.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "大安區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Daan.traf, alpha = 1) +
+  geom_segment(data = Daan.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Daan.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Zhongshan.road2 <- Zhongshan.road2 %>% filter(StartWgsX < 121.60)
+
+p4 <- ggplot(data = Zhongshan.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "中山區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Zhongshan.traf, alpha = 1) +
+  geom_segment(data = Zhongshan.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Zhongshan.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Zhongzheng.road1 <- Zhongzheng.road1 %>% filter(StartWgsX < 121.53 | StartWgsY < 25.02 | EndWgsY < 25.02 | StartWgsY > 25.03 | EndWgsY > 25.03)
+Zhongzheng.road2 <- Zhongzheng.road2 %>% filter(StartWgsX < 121.60)
+Zhongzheng.traf <- Zhongzheng.traf %>% filter(X > 121.5)
+Zhongzheng.road2 <- Zhongzheng.road2 %>% filter(StartWgsX < 121.505 | StartWgsX > 121.51 | EndWgsX < 121.505 |　EndWgsX > 121.51　| StartWgsY < 25.04 | EndWgsY < 25.04 | StartWgsY > 25.05 | EndWgsY > 25.05)
+
+p5 <- ggplot(data = Zhongzheng.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "中正區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Zhongzheng.traf, alpha = 1) +
+  geom_segment(data = Zhongzheng.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Zhongzheng.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Datong.road1 <- Datong.road1 %>% filter(EndWgsX < 121.60)
+Datong.road2 <- Datong.road2 %>% filter(StartWgsY < 25.1)
+Datong.traf <- Datong.traf %>% filter(Y < 25.08)
+
+p6 <- ggplot(data = Datong.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "大同區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Datong.traf, alpha = 1) +
+  geom_segment(data = Datong.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Datong.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5)) 
+
+Wenshan.road2 <- Wenshan.road2[-3,]
+
+p7 <- ggplot(data = Wanhua.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "萬華區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Wanhua.traf, alpha = 1) +
+  geom_segment(data = Wanhua.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Wanhua.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Wenshan.road1 <- Wenshan.road1 %>% filter(EndWgsY < 25.08)
+Wenshan.road2 <- Wenshan.road2 %>% filter(StartWgsX < 121.61)
+Wenshan.traf <- Wenshan.traf %>% filter(Y < 25.02)
+
+p8 <- ggplot(data = Wenshan.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "文山區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Wenshan.traf, alpha = 1) +
+  geom_segment(data = Wenshan.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Wenshan.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Nangang.road1 <- Nangang.road1 %>% filter(EndWgsX > 121.55)
+Nangang.road2 <- Nangang.road2 %>% filter(StartWgsX > 121.55)
+Nangang.traf <- Nangang.traf %>% filter(Y < 25.06)
+
+p9 <- ggplot(data = Nangang.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "南港區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Nangang.traf, alpha = 1) +
+  geom_segment(data = Nangang.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Nangang.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Neihu.traf <- Neihu.traf %>% filter(X > 121.54)
+
+p10 <- ggplot(data = Neihu.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "內湖區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Neihu.traf, alpha = 1) +
+  geom_segment(data = Neihu.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Neihu.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Shilin.traf <- Shilin.traf %>% filter(Y > 25.07)
+Shilin.road2 <- Shilin.road2 %>% filter(StartWgsY > 25)
+
+p11 <- ggplot(data = Shilin.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "士林區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Shilin.traf, alpha = 1) +
+  geom_segment(data = Shilin.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Shilin.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("forestgreen", "red")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+Beitou.road1 <- Beitou.road1 %>% filter(EndWgsY > 25.06)
+Beitou.traf <- Beitou.traf %>% filter(Y > 25.05)
+
+p12 <- ggplot(data = Beitou.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "北投區行政區圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = Beitou.traf, alpha = 1) +
+  geom_segment(data = Beitou.road1, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  geom_segment(data = Beitou.road2, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c("red", "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+pp12 <- grid.arrange(p1, p2, nrow = 1, ncol = 2)
+pp34 <- grid.arrange(p3, p4, nrow = 1, ncol = 2)
+pp56 <- grid.arrange(p5, p6, nrow = 1, ncol = 2)
+pp78 <- grid.arrange(p7, p8, nrow = 1, ncol = 2)
+pp910 <- grid.arrange(p9, p10, nrow = 1, ncol = 2)
+pp1112 <- grid.arrange(p11, p12, nrow = 1, ncol = 2)
+
+
+############################################################
+# 科技執法
+
+science <- read.table("science.csv", sep = ",", 
+                      fileEncoding = "BIG5", 
+                      header = T)
+head(science)
+head(traffic)
+date <- strptime(traffic$發生時間, "%Y/%m/%d")
+date <- format(datetime, "%Y-%m-%d")
+traffic['date'] <- date
+
+
+s1 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "科技執法前(111/1)車禍發生圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", 
+             data = traffic[(traffic$date >= "2022-01-01") & (traffic$date <= "2022-01-31"),], alpha = 1) +
+  geom_point(aes(x = X, y = Y), size = 3, 
+             col = "blue", data = science, alpha = 1) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+
+s2 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "科技執法後(111/12)車禍發生圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", 
+             data = traffic[(traffic$date >= "2022-12-01") & (traffic$date <= "2022-12-31"),], alpha = 1) +
+  geom_point(aes(x = X, y = Y), size = 3, 
+             col = "blue", data = science, alpha = 1) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+s2
+s12 <- grid.arrange(s1, s2, nrow = 1, ncol = 2)
+
+
+traffic[traffic$date >= '2021-12-01' & traffic$date <= '2021-12-31', ]

@@ -1,0 +1,7 @@
+library(shiny)
+shinyApp(
+  ui = fluidPage(
+    includeHTML(rmarkdown::render("app.Rmd"))),
+  server = function(input, output) {
+  }
+)

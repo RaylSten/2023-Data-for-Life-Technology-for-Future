@@ -1,0 +1,272 @@
+setwd("C:/Users/user/Desktop/政大/競賽/內政部/shiny/Shiny/data")
+library(sf)
+library(gridExtra)
+library(ggplot2)
+library(RColorBrewer)
+library(maps)
+library(mapproj)
+library(ggmap)
+library(lubridate)
+library(tidyverse)
+
+# 地圖
+taiwan.town.map <- st_read("TOWN_MOI_1120317.shp")
+head(taiwan.town.map)
+taipei.map <- taiwan.town.map[taiwan.town.map$COUNTYNAME == "臺北市",]
+
+###############################################################
+# Traffic Complete
+traffic <- read.csv("traffic_complete.csv", as.is = T, 
+                    fileEncoding = "BIG5", header = T)
+head(traffic)
+traffic_p <- traffic[, c(2, 14, 15)]
+
+head(traffic_p)
+
+###############################################################
+# road
+
+road <- read.csv("road.csv", row.names = 1, encoding = 'BIG5')
+road[road$AvgSpd >= 65, '是否超速'] <- 1
+road[road$AvgSpd < 65, '是否超速'] <- 0
+road$是否超速 <- factor(road$是否超速, levels = c(1, 0), labels = c("是", "否"))
+road <- road %>% filter(StartWgsX > 121.54)
+head(road)
+str(road)
+# 
+science <- read.csv("science1.csv", as.is = T, 
+                    fileEncoding = "BIG5", header = T)
+head(science)
+
+
+windowsFonts(A = windowsFont('微軟正黑體'))
+
+ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "台北市行政區車速與車禍事故圖") + 
+  geom_point(aes(x = X, y = Y), size = 1, 
+             col = 'black', data = traffic_p, alpha = 1) + 
+  geom_segment(data = road, 
+               aes(x = StartWgsX, y = StartWgsY, 
+                   xend = EndWgsX, yend = EndWgsY, 
+                   col = 是否超速), 
+               size = 2) + 
+  scale_color_manual(values = c('red', "forestgreen")) + 
+  theme(plot.title = element_text(face = 'bold', size = 20,
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+
+
+traffic_group <- traffic %>% 
+  group_by(地區, 發生月份) %>% summarise(total_count = n())
+
+traffic_group$發生月份 <-as.factor(traffic_group$發生月份)
+traffic_group
+# Change line types
+p1 <- ggplot(data = traffic_group, aes(x = as.factor(發生月份), 
+                                 y = total_count, group = 地區, color = 地區)) +
+  labs(x = '車禍發生月份', y = '車禍總次數', title = "行政區車禍總次數與發生月份折線圖") +
+  geom_line( size = 1.5)+
+  geom_point() + 
+  theme(plot.title = element_text(face = 'bold', size = 20,
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+p1
+library(plotly)
+ggplotly(p1)
+
+# https://rkabacoff.github.io/datavis/Interactive.html#highcharter
+
+df <- traffic[traffic$地區 %in% c('中山區', '大安區', '中正區','士林區','信義區'), ]
+head(df)
+
+df_group <- df %>% 
+  group_by(地區) %>% summarise(total_count = n())
+
+df$地區 <- as.factor(df$地區)
+
+p3 <- ggplot(df_group, aes(x = reorder(as.factor(地區), -total_count), y = total_count, 
+                               fill = 地區), color = 地區) +
+  geom_bar(stat = "identity") + 
+  scale_fill_manual(name = "地區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '車禍發生地區', y = '車禍總次數', title = "行政區車禍總次數與發生地區長條圖") +
+  theme(plot.title = element_text(face = 'bold', size = 18,
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+p3
+
+grid.arrange(p1, p3, nrow = 1, ncol = 2)
+
+traffic_accident_group <- df%>% group_by(區序,發生月)%>%summarise(total_count=n())
+
+
+for (i in c(1:nrow(traffic_accident_group))){
+  traffic_accident_group$區序[i] <- strsplit(traffic_accident_group$區序, split = "[0-9]+")[[i]][2]
+}
+traffic_accident_group$發生月 <-as.factor(traffic_accident_group$發生月)
+
+# Change line types
+plot_2=ggplot(data=traffic_accident_group, aes(x=as.factor(發生月), y=total_count, group=區序, color=區序)) +
+  geom_line(aes(linetype=區序))+
+  geom_point(aes(shape=區序))
+
+##
+
+############################################################
+# 科技執法
+
+science <- read.table("science1.csv", sep = ",", 
+                      fileEncoding = "BIG5", 
+                      header = T)
+head(science)
+head(traffic)
+date <- strptime(traffic$發生時間, "%Y/%m/%d")
+date <- format(datetime, "%Y-%m-%d")
+traffic['date'] <- date
+
+
+s1 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "科技執法前(111/1)車禍發生圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", 
+             data = traffic[((traffic$發生月份 >= 1) & (traffic$發生月份 < 12)) ,], alpha = 1) +
+  geom_point(aes(x = 經度, y = 緯度), size = 3, 
+             col = "blue", data = science, alpha = 1) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+s1
+
+s2 <- ggplot(data = taipei.map) +
+  geom_sf(aes(fill = TOWNNAME)) +
+  scale_fill_manual(name = "行政區",
+                    values = colorRampPalette(brewer.pal(8, "Pastel2"))(22)) +
+  labs(x = '經度', y = '緯度', title = "科技執法後(111/12)車禍發生圖") + 
+  geom_point(aes(x = X, y = Y), size = 0.5, 
+             col = "red", 
+             data = traffic[(traffic$發生月份 == 12),], alpha = 1) +
+  geom_point(aes(x = 經度, y = 緯度), size = 3, 
+             col = "blue", data = science, alpha = 1) + 
+  theme(plot.title = element_text(face = 'bold', size = 20, 
+                                  family = 'A', hjust = 0.5),
+        axis.title.x = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5),
+        axis.title.y = element_text(face = 'bold', size = 16,
+                                    family = 'A', hjust = 0.5))
+
+s2
+s12 <- grid.arrange(s1, s2, nrow = 1, ncol = 2)
+
+
+traffic[traffic$date >= '2021-12-01' & traffic$date <= '2021-12-31', ]
+
+
+df1 <- read.csv("traffic_complete.csv", as.is = T,
+                    fileEncoding = "BIG5", header = T)
+head(df1)
+library(fmsb)
+library(dplyr)
+
+x1 <- df1[df1$發生月份 >= 1 & df1$發生月份 <= 3,] %>% group_by(地區) %>% summarize(count = n())
+x2 <- df1[df1$發生月份 >= 4 & df1$發生月份 <= 6,] %>% group_by(地區) %>% summarize(count = n()) 
+x3 <- df1[df1$發生月份 >= 7 & df1$發生月份 <= 9,] %>% group_by(地區) %>% summarize(count = n())
+x4 <- df1[df1$發生月份 >= 10 & df1$發生月份 <= 12,] %>% group_by(地區) %>% summarize(count = n())
+x1$count <- x1$count / max(x1$count)
+x2$count <- x2$count / max(x2$count)
+x3$count <- x3$count / max(x3$count)
+x4$count <- x4$count / max(x4$count)
+
+t_x1 <- t(x1)
+t_x2 <- t(x2)
+t_x3 <- t(x3)
+t_x4 <- t(x4)
+colnames <- t_x1[1,] 
+t_x1 <- t_x1[2, ]
+t_x1 <- as.numeric(t_x1)
+t_x1 <- data.frame(matrix(t_x1, ncol = 12))
+colnames(t_x1) <- colnames
+t_x1 <- rbind(rep(0, 12), rep(1, 12), t_x1)
+
+colnames <- t_x2[1,] 
+t_x2 <- t_x2[2, ]
+t_x2 <- as.numeric(t_x2)
+t_x2 <- data.frame(matrix(t_x2, ncol = 12))
+colnames(t_x2) <- colnames
+t_x2 <- rbind(rep(0, 12), rep(1, 12), t_x2)
+
+colnames <- t_x3[1,] 
+t_x3 <- t_x3[2, ]
+t_x3 <- as.numeric(t_x3)
+t_x3 <- data.frame(matrix(t_x3, ncol = 12))
+colnames(t_x3) <- colnames
+t_x3 <- rbind(rep(0, 12), rep(1, 12), t_x3)
+
+colnames <- t_x4[1,] 
+t_x4 <- t_x4[2, ]
+t_x4 <- as.numeric(t_x4)
+t_x4 <- data.frame(matrix(t_x4, ncol = 12))
+colnames(t_x4) <- colnames
+t_x4 <- rbind(rep(0, 12), rep(1, 12), t_x4)
+
+t_sumarize <- rbind(t_x1[3,], t_x2[3, ], t_x3[3, ], t_x4[3, ])
+rownames(t_sumarize) <- c('春', '夏', '秋', '冬')
+t_sumarize <- rbind(rep(1, 12), rep(0, 12), t_sumarize)
+color <- c("#00AFBB", "#E7B800", "#FC4E07", '#A2CD5A')
+
+create_beautiful_radarchart <- function(data, color){
+  radarchart(
+    data, axistype = 1,
+    # Customize the polygon
+    pcol = color, pfcol = scales::alpha(color, 0.1), plwd = 2, plty = 1,
+    # Customize the grid
+    cglcol = "grey", cglty = 1, cglwd = 0.8,
+    # Customize the axis
+    axislabcol = "grey", 
+    # Variable labels
+    vlcex = 0.8
+  )
+}
+op <- par(mar = c(1, 1, 1, 1))
+create_beautiful_radarchart(t_sumarize, color)
+legend(
+  x = "right", legend = c('春', '夏', '秋', '冬'), horiz = F,
+  bty = "n", pch = 20 , col = color,
+  text.col = "black", cex = 1, pt.cex = 1.5
+)
+par(op)
+y = t_sumarize[3:6,]
+y = cbind(rownames(y), y) 
+colnames(y)[1] = 'Group'
+library(ggradar)
+ggradar(y,
+        background.circle.colour = "white",
+        axis.line.colour = "gray60",
+        gridline.min.colour = "gray60",
+        gridline.mid.colour = "gray60",
+        gridline.max.colour = "gray60",
+        group.colours = color)
+

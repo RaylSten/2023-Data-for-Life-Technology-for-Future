@@ -1,0 +1,4 @@
+"0","DT::datatable(traffic_c, filter = 'top', fillContainer = TRUE,"
+"0","              options = list(columnDefs = list(list(className = 'dt-center', targets = c(1, 3, 4, 5)))))"
+"2","警告： It seems your data is too big for client-side DataTables. You may consider server-side processing: https://rstudio.github.io/DT/server.html"
+"2","警告： It seems your data is too big for client-side DataTables. You may consider server-side processing: https://rstudio.github.io/DT/server.html"

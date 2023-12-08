@@ -1,0 +1,2 @@
+"0","DT::datatable(science, filter = 'top', fillContainer = TRUE, "
+"0","              options = list(columnDefs = list(list(className = 'dt-center', targets = c(2, 3, 4)))))"
